@@ -126,7 +126,7 @@ void wakePet(bool fromInteraction=true){
  if(hasRealTime&&isNightHour())nightOverride=true;
  nightRest=false;
  lastInteraction=millis();awakeSince=millis();
- if(wasResting){actionFace=255;lastWake=millis();wakeTransitionUntil=millis()+5UL*60000UL;sleepiness=constrain((int)sleepiness+8,0,100);say("Ммм?.. Ты здесь? ♡");}
+ if(wasResting){actionFace=255;lastWake=millis();wakeTransitionUntil=millis()+90000UL;sleepiness=constrain((int)sleepiness+8,0,100);say("Ммм?.. Ты здесь? ♡");}
  dirty=true;
 }
 void updateSleepState(){
@@ -140,7 +140,7 @@ void updateSleepState(){
  }
  if(nightRest){nightRest=false;awakeSince=now;lastInteraction=now;dirty=true;say("Доброе утро! ♡");}
  if(dayNap){
-  if((int32_t)(now-napUntil)>=0){dayNap=false;awakeSince=now;lastInteraction=now;lastWake=now;wakeTransitionUntil=now+5UL*60000UL;sleepiness=constrain((int)sleepiness-20,0,100);say("Мрр... я выспался! ♡");dirty=true;}
+  if((int32_t)(now-napUntil)>=0){dayNap=false;awakeSince=now;lastInteraction=now;lastWake=now;wakeTransitionUntil=now+90000UL;sleepiness=constrain((int)sleepiness-20,0,100);say("Мрр... я выспался! ♡");dirty=true;}
   return;
  }
  if((uint32_t)(now-lastInteraction)>=15UL*60000UL && (uint32_t)(now-awakeSince)>=15UL*60000UL){
@@ -170,7 +170,7 @@ const char* emotion(){
  if(mood>=75&&fun>=65)return "HAPPY";
  return "CALM";
 }
-const char* FACE_NAMES[]={"CALM","HAPPY","BLINK","SLEEP","SLEEPY","SAD","CRY","HUNGRY","SICK","ANGRY","SURPRISE","LOVE"};
+const char* FACE_NAMES[]={"CALM","HAPPY","BLINK","SLEEP","SLEEPY","SAD","CRY","HUNGRY","SICK","ANGRY","SURPRISE","LOVE","DROWSY","RUB_EYES"};
 int8_t debugFace=-1;
 uint32_t debugUntil=0;
 uint32_t refreshCount=0;
@@ -186,8 +186,11 @@ uint8_t faceMode(){
  if(isResting())return 3; // SLEEP portrait
  // A recent interaction temporarily takes priority over grogginess.
  if(actionFace!=255 && (int32_t)(millis()-actionFaceUntil)<0)return actionFace;
- if((int32_t)(millis()-wakeTransitionUntil)<0)return 4; // SLEEPY while waking
- if(sleepiness>=75)return 4;
+ if((int32_t)(millis()-wakeTransitionUntil)<0){
+  uint32_t elapsed=90000UL-(wakeTransitionUntil-millis());
+  return elapsed<20000UL?13:12; // eye rubbing, then drowsy
+ }
+ // Sleepiness remains a statistic; it must not lock the face in a yawn.
  if(health<25)return 8;
  if(food<25)return 7;
  if(mood<15)return 6;
@@ -199,6 +202,8 @@ uint8_t faceMode(){
 }
 const uint8_t* faceBitmap(){
  switch(faceMode()){
+ case 12:return fenikDrowsyArt;
+ case 13:return fenikRubEyesArt;
  case 1:return fenikHappyArt;
  case 2:return fenikBlinkArt;
  case 3:return fenikSleepArt;
@@ -352,6 +357,7 @@ String json(){
  s+=",\"totalMinutes\":"+String(totalMinutes);
  s+=",\"hour\":"+String(hourNow())+",\"minute\":"+String(minuteNow())+",\"dayPart\":\""+String(dayPart())+"\"";
  s+=",\"inventory\":\""+inventoryText()+"\"";
+ s+=",\"items\":[";for(int i=0;i<4;i++){if(i)s+=",";s+=String(inventory[i]);}s+="]";
  s+=",\"given\":"+String(given)+",\"quickWins\":"+String(quickWins)+",\"guessWins\":"+String(guessWins);
  s+=",\"gameType\":"+String(gameType)+",\"quizActive\":"+(quizActive?String("true"):String("false"));
  s+=",\"gamesLost\":"+String(gamesLost)+",\"bestReactionMs\":"+String(bestReactionMs);
@@ -371,23 +377,27 @@ const char HTML[] PROGMEM=R"FENIK(<!doctype html><html lang="ru"><head><meta cha
 .cups{display:flex;justify-content:center;gap:15px;margin:20px auto}.cup{font-size:42px;min-width:70px;transition:transform .28s}.cup.reveal{transform:translateY(-22px)}
 #gameStage .big{font-size:46px;margin:14px}.emotionPic{width:160px;height:122px;image-rendering:pixelated;border-radius:10px;background:white}
 #reactionPad{width:100%;min-height:115px;font-size:28px;border-radius:18px;background:#55435e;color:white}
-#reactionPad.ready{background:#37ba8c;color:#102d26}button.secondary{background:#ffffff18;color:white;border:1px solid #ffffff28}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.emotions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.emotions button{font-size:12px;padding:10px 2px}.emotions button.active{outline:3px solid #fff}.debug{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.mono{font:12px ui-monospace,monospace;white-space:pre-wrap;line-height:1.7;color:#c7eaf1}#toast{position:sticky;bottom:10px;background:#29213c;border:1px solid #ff9cd4;border-radius:12px;padding:10px;display:none}label{display:block;margin-bottom:8px}.switch{display:flex;gap:10px;align-items:center;margin:12px 0}input{accent-color:#ff9bd6}@media(max-width:430px){.emotions{grid-template-columns:repeat(3,1fr)}.hero{gap:8px}.avatar{width:95px;min-width:95px;height:95px}}
+#reactionPad.ready{background:#37ba8c;color:#102d26}button.secondary{background:#ffffff18;color:white;border:1px solid #ffffff28}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.emotions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.emotions button{font-size:12px;padding:10px 2px}.emotions button.active{outline:3px solid #fff}.debug{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.mono{font:12px ui-monospace,monospace;white-space:pre-wrap;line-height:1.7;color:#c7eaf1}#toast{position:sticky;bottom:10px;background:#29213c;border:1px solid #ff9cd4;border-radius:12px;padding:10px;display:none}label{display:block;margin-bottom:8px}.switch{display:flex;gap:10px;align-items:center;margin:12px 0}input{accent-color:#ff9bd6}.debugfields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.debugfields label{font-size:12px;color:#b8b2c8}.debugfields input{width:100%;background:#ffffff15;color:#fff;border:1px solid #ffffff35;border-radius:10px;padding:10px;font-size:16px}.debugfields button{width:100%;margin-top:5px}.inventoryItem{display:flex;flex-direction:column;gap:6px;align-items:stretch}@media(max-width:430px){.emotions{grid-template-columns:repeat(3,1fr)}.hero{gap:8px}.avatar{width:95px;min-width:95px;height:95px}}
 
 /* Mobile-first navigation; all original controls and endpoint handlers retained */
 .tabnav{position:sticky;top:0;z-index:10;display:flex;gap:6px;overflow-x:auto;padding:9px 0 12px;background:#201a2c;scrollbar-width:thin}.tabnav button{white-space:nowrap;flex:0 0 auto;background:#ffffff16;color:#f9edf8;border:1px solid #ffffff28;padding:10px 13px;font-size:13px}.tabnav button[aria-selected="true"]{background:linear-gradient(110deg,#ffaddd,#a6eaf3);color:#292039}.tabpane[hidden]{display:none!important}.tabpane{animation:tabIn .12s ease-out}@keyframes tabIn{from{opacity:.7}to{opacity:1}}.tabpane>.card:first-child{margin-top:12px}.tabhint{font-size:12px;color:#b8b2c8;margin:8px 0 0}a.otabtn{display:block;text-align:center;border-radius:12px;padding:13px;background:linear-gradient(110deg,#ffaddd,#a6eaf3);color:#292039;font-weight:750;text-decoration:none}
-</style></head><body><main><h1>♡ Fenik Pet <small style="font-size:13px;color:#a6eaf3">v1.4</small></h1><p class="muted">Living Companion · сон, память и тихий e-ink</p><nav class="tabnav" aria-label="Разделы Fenik Pet"><button type="button" data-tab="home" aria-selected="true">♡ Главная</button><button type="button" data-tab="status" aria-selected="false">📊 Status</button><button type="button" data-tab="games" aria-selected="false">🎮 Игры</button><button type="button" data-tab="debug" aria-selected="false">🧪 Debug</button><button type="button" data-tab="settings" aria-selected="false">⚙️ Настройки</button></nav>
+</style></head><body><main><h1>♡ Fenik Pet <small style="font-size:13px;color:#a6eaf3">v1.4.5</small></h1><p class="muted">Living Companion · сон, память и тихий e-ink</p><nav class="tabnav" aria-label="Разделы Fenik Pet"><button type="button" data-tab="home" aria-selected="true">♡ Главная</button><button type="button" data-tab="status" aria-selected="false">📊 Status</button><button type="button" data-tab="games" aria-selected="false">🎮 Игры</button><button type="button" data-tab="inventory" aria-selected="false">🎒 Инвентарь</button><button type="button" data-tab="debug" aria-selected="false">🧪 Debug</button><button type="button" data-tab="settings" aria-selected="false">⚙️ Настройки</button></nav>
 <div class="tabpane" id="tab-home"><section class="card hero"><div class="avatar" id="avatar"><img id="fenikPortrait" src="/portrait?face=0" alt="Феник"></div><div><div class="pill" id="face">CALM</div><h2 id="state" style="margin:10px 0">Подключение…</h2><div id="level">LV 1 · XP 0</div><div class="muted" id="conn">● Подключение</div></div></section><section class="card"><h2>💬 Феник говорит</h2><p id="dialogue" style="font-size:18px">Привет! ♡</p><p class="muted" id="event">Событие: нет</p></section><section class="card"><h2>🎮 Забота и игры</h2><div class="grid"><button onclick="send('action','feed')">🍙 Покормить</button><button onclick="send('action','play')">🎮 Поиграть</button><button onclick="send('action','sleep')" id="sleepBtn">💤 Сон</button><button onclick="send('action','wash')">🫧 Искупать</button><button onclick="send('action','pet')">💕 Погладить</button><button onclick="send('action','surprise')">🎁 Сюрприз</button></div></section></div>
-<div class="tabpane" id="tab-status" hidden><section class="card"><h2>🐱 Характер и память</h2><div class="pill" id="personality">Нежный</div><p id="memory">Мы только знакомимся ♡</p><p class="muted" id="habits">Ожидание истории...</p><button class="secondary" onclick="send('memory','recall')">💭 Вспомнить нас</button></section><section class="card"><h2>💞 Дружба и достижения</h2><div class="row"><span>Привязанность</span><b id="bondNum">0%</b></div><div class="bar"><div class="fill" id="bondBar" style="width:0%"></div></div><p id="progress" class="muted"></p><div id="achievements" class="pill">Пока нет достижений</div></section><section class="card"><h2>🌙 Режим дня</h2><p id="daycycle">День</p><p class="muted" id="clockInfo">Часы синхронизируются с телефоном или ПК при открытии страницы.</p><button class="secondary" onclick="syncTime()">🕒 Синхронизировать время</button></section><section class="card"><h2>🎁 Инвентарь и подарки</h2><p id="inventory">Загрузка...</p><div class="grid"><button onclick="send('gift','give',0)">🍪 Печенье</button><button onclick="send('gift','give',1)">🧶 Клубок</button><button onclick="send('gift','give',2)">🎀 Бантик</button><button onclick="send('gift','give',3)">⭐ Звёздочка</button></div><p id="giftStats" class="muted"></p></section><section class="card"><h2>🌙 Сон и пробуждение</h2><p id="nightState" class="muted">Ожидание времени…</p><div class="grid"><button class="secondary" id="nightToggle" onclick="send('night','toggle')">🌙 Автосон: включён</button><button class="secondary" onclick="send('night','wake')">☀️ Разбудить Феника</button></div><p class="muted">Ночью спит с 22:00 до 07:00. Днём дремлет после 15 минут бездействия на 20–40 минут. Забота во сне не будит, игры будят. Экран почти не обновляется. После отключения питания открой страницу для синхронизации часов.</p></section></div>
+<div class="tabpane" id="tab-status" hidden><section class="card"><h2>🐱 Характер и память</h2><div class="pill" id="personality">Нежный</div><p id="memory">Мы только знакомимся ♡</p><p class="muted" id="habits">Ожидание истории...</p><button class="secondary" onclick="send('memory','recall')">💭 Вспомнить нас</button></section><section class="card"><h2>💞 Дружба и достижения</h2><div class="row"><span>Привязанность</span><b id="bondNum">0%</b></div><div class="bar"><div class="fill" id="bondBar" style="width:0%"></div></div><p id="progress" class="muted"></p><div id="achievements" class="pill">Пока нет достижений</div></section><section class="card"><h2>🌙 Режим дня</h2><p id="daycycle">День</p><p class="muted" id="clockInfo">Часы синхронизируются с телефоном или ПК при открытии страницы.</p><button class="secondary" onclick="syncTime()">🕒 Синхронизировать время</button></section><section class="card"><h2>🌙 Сон и пробуждение</h2><p id="nightState" class="muted">Ожидание времени…</p><div class="grid"><button class="secondary" id="nightToggle" onclick="send('night','toggle')">🌙 Автосон: включён</button><button class="secondary" onclick="send('night','wake')">☀️ Разбудить Феника</button></div><p class="muted">Ночью спит с 22:00 до 07:00. Днём дремлет после 15 минут бездействия на 20–40 минут. Забота во сне не будит, игры будят. Экран почти не обновляется. После отключения питания открой страницу для синхронизации часов.</p></section></div>
 <div class="tabpane" id="tab-games" hidden><section class="card"><h2>🎮 Игровой уголок</h2>
 <div class="grid"><button onclick="startShells()">♡ Напёрстки</button><button onclick="startEmotion()">🎭 Угадай эмоцию</button><button onclick="startReaction()">⚡ Реакция</button></div>
 <div id="gameStage" style="margin-top:15px;min-height:160px;text-align:center"><p class="muted">Выбери мини-игру!</p></div>
 <p id="gameInfo" class="muted">Игры проходят в браузере, результат сохраняется на Фенике.</p>
 <p id="gameStats" class="muted">Раундов: 0 · Побед: 0 · Поражений: 0</p></section></div>
-<div class="tabpane" id="tab-debug" hidden><section class="card"><h2>🧪 Debug · 12 эмоций</h2><p class="muted" style="font-size:13px">Нажми эмоцию — Феник покажет её на дисплее примерно 20 секунд. Изменения характеристик сохраняются только после обычных действий; тест эмоций не меняет прогресс.</p><div class="emotions" id="emotions"></div><div style="margin-top:10px" class="grid"><button class="secondary" onclick="send('debug','auto')">↩ Автоэмоции</button><button class="secondary" onclick="send('debug','blink')">◡ Тест моргания</button></div></section><section class="card"><h2>⏰ Debug времени и событий</h2><div class="grid"><button class="secondary" onclick="send('world','hour',8)">☀️ Утро 08:00</button><button class="secondary" onclick="send('world','hour',14)">🌤 День 14:00</button><button class="secondary" onclick="send('world','hour',20)">🌆 Вечер 20:00</button><button class="secondary" onclick="send('world','hour',23)">🌙 Ночь 23:00</button><button class="secondary" onclick="send('world','event')">🎲 Событие</button><button class="secondary" onclick="send('world','gift')">🎁 Тестовый предмет</button></div></section><section class="card"><h2>🖥 E-ink Control</h2><p class="muted">Полное обновление работает даже во сне и не будит Феника. Частичное обновление принудительно рисует текущую эмоцию и показатели.</p><div class="grid"><button class="secondary" onclick="send('debug','full')">🔄 Полное обновление</button><button class="secondary" onclick="send('debug','partial')">↻ Частичное обновление</button></div><p class="muted">Автоматическое обновление:</p><div class="grid"><button class="secondary" onclick="send('screen','mode',0)">Обычный</button><button class="secondary" onclick="send('screen','mode',1)">Экономный</button><button class="secondary" onclick="send('screen','mode',2)">Минимальный</button></div><p class="muted">Минимальный интервал: <span id="screenInterval">60</span> с</p><div class="grid"><button class="secondary" onclick="send('screen','interval',30)">30 с</button><button class="secondary" onclick="send('screen','interval',60)">60 с</button><button class="secondary" onclick="send('screen','interval',120)">120 с</button><button class="secondary" onclick="send('screen','interval',180)">180 с</button></div><p class="muted" id="screenStats">Загрузка...</p></section><section class="card"><h2>🛠 Диагностика и тесты</h2><div id="stats"></div><div class="debug"><button class="secondary" onclick="send('debug','tick')">⏩ +1 минута жизни</button><button class="secondary" onclick="send('debug','refresh')">🔄 Обновить экран</button><button class="secondary" onclick="send('debug','boost')">✨ Все шкалы 100%</button><button class="secondary" onclick="confirm('Сбросить характеристики и XP?')&&send('debug','reset')">↺ Сброс прогресса</button></div><p class="mono" id="diagnostics">Подключение к ESP32…</p><div class="grid"><button class="secondary" onclick="copyDebug()">📋 Копировать диагностику</button><button class="secondary" onclick="refresh()">↻ Обновить данные</button></div></section></div>
+<div class="tabpane" id="tab-inventory" hidden><section class="card"><h2>🎒 Инвентарь</h2><p class="muted">Показаны только предметы, которые есть в наличии.</p><div class="grid" id="inventoryItems"></div><p id="inventoryEmpty" class="muted" hidden>Пока нет предметов. Получай их в играх и событиях ♡</p><p id="inventory" class="muted" hidden></p><p id="giftStats" class="muted"></p></section></div>
+<div class="tabpane" id="tab-debug" hidden><section class="card"><h2>🧪 Debug · 12 эмоций</h2><p class="muted" style="font-size:13px">Нажми эмоцию — Феник покажет её на дисплее примерно 20 секунд. Изменения характеристик сохраняются только после обычных действий; тест эмоций не меняет прогресс.</p><div class="emotions" id="emotions"></div><div style="margin-top:10px" class="grid"><button class="secondary" onclick="send('debug','auto')">↩ Автоэмоции</button><button class="secondary" onclick="send('debug','blink')">◡ Тест моргания</button></div></section><section class="card"><h2>🎛 Ручные значения</h2><p class="muted">Введи число и нажми «Применить». Изменения сохраняются. Шкалы: 0–100, XP: 0–1000000, предметы: 0–99.</p><div class="debugfields" id="debugFields"></div></section><section class="card"><h2>⏰ Debug времени и событий</h2><div class="grid"><button class="secondary" onclick="send('world','hour',8)">☀️ Утро 08:00</button><button class="secondary" onclick="send('world','hour',14)">🌤 День 14:00</button><button class="secondary" onclick="send('world','hour',20)">🌆 Вечер 20:00</button><button class="secondary" onclick="send('world','hour',23)">🌙 Ночь 23:00</button><button class="secondary" onclick="send('world','event')">🎲 Событие</button><button class="secondary" onclick="send('world','gift')">🎁 Тестовый предмет</button></div></section><section class="card"><h2>🖥 E-ink Control</h2><p class="muted">Полное обновление работает даже во сне и не будит Феника. Частичное обновление принудительно рисует текущую эмоцию и показатели.</p><div class="grid"><button class="secondary" onclick="send('debug','full')">🔄 Полное обновление</button><button class="secondary" onclick="send('debug','partial')">↻ Частичное обновление</button></div><p class="muted">Автоматическое обновление:</p><div class="grid"><button class="secondary" onclick="send('screen','mode',0)">Обычный</button><button class="secondary" onclick="send('screen','mode',1)">Экономный</button><button class="secondary" onclick="send('screen','mode',2)">Минимальный</button></div><p class="muted">Минимальный интервал: <span id="screenInterval">60</span> с</p><div class="grid"><button class="secondary" onclick="send('screen','interval',30)">30 с</button><button class="secondary" onclick="send('screen','interval',60)">60 с</button><button class="secondary" onclick="send('screen','interval',120)">120 с</button><button class="secondary" onclick="send('screen','interval',180)">180 с</button></div><p class="muted" id="screenStats">Загрузка...</p></section><section class="card"><h2>🛠 Диагностика и тесты</h2><div id="stats"></div><div class="debug"><button class="secondary" onclick="send('debug','tick')">⏩ +1 минута жизни</button><button class="secondary" onclick="send('debug','refresh')">🔄 Обновить экран</button><button class="secondary" onclick="send('debug','boost')">✨ Все шкалы 100%</button><button class="secondary" onclick="confirm('Сбросить характеристики и XP?')&&send('debug','reset')">↺ Сброс прогресса</button></div><p class="mono" id="diagnostics">Подключение к ESP32…</p><div class="grid"><button class="secondary" onclick="copyDebug()">📋 Копировать диагностику</button><button class="secondary" onclick="refresh()">↻ Обновить данные</button></div></section></div>
 <div class="tabpane" id="tab-settings" hidden><section class="card"><h2>⚙️ Настройки и обновление</h2><p class="muted">Обновление прошивки через iPhone. Используй только совместимый firmware.bin для ESP32-S3.</p><a class="otabtn" href="/update">⬆️ Открыть OTA Update</a><p class="tabhint">Не отключай питание во время обновления. Настройки экрана находятся во вкладке Debug.</p><button class="secondary" onclick="syncTime()">🕒 Синхронизировать часы</button></section></div><p class="muted" style="font-size:12px;text-align:center">Автообновление данных каждые 2 секунды. E-ink медленнее веб-интерфейса.</p><div id="toast"></div></main><script>
 
 (function(){const tabs=[...document.querySelectorAll('[data-tab]')];function selectTab(name){if(!document.getElementById('tab-'+name))name='home';document.querySelectorAll('.tabpane').forEach(p=>p.hidden=p.id!=='tab-'+name);tabs.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===name)));history.replaceState(null,'','#'+name)}tabs.forEach(b=>b.addEventListener('click',()=>selectTab(b.dataset.tab)));selectTab(location.hash.slice(1)||'home')})();
-const faces=['CALM','HAPPY','BLINK','SLEEP','SLEEPY','SAD','CRY','HUNGRY','SICK','ANGRY','SURPRISE','LOVE'];const icons=['ฅ^•ﻌ•^ฅ','(≧◡≦)','(－_－)','(－.－) zZ','(－ω－)','(｡•́︿•̀｡)','(╥﹏╥)','(｡•́︿•̀｡)','(×_×)','( `ω´ )','(⊙_⊙)','(♡ω♡)'];const labels={food:'🍙 Еда',mood:'💗 Настроение',fun:'🎮 Веселье',health:'✚ Здоровье'};let last=null,busy=false;const $=id=>document.getElementById(id);$('emotions').innerHTML=faces.map((f,i)=>`<button class="secondary" id="emo${i}" onclick="send('debug','face',${i})">${icons[i]}<br>${f}</button>`).join('');
+const faces=['CALM','HAPPY','BLINK','SLEEP','SLEEPY','SAD','CRY','HUNGRY','SICK','ANGRY','SURPRISE','LOVE','DROWSY','RUB_EYES'];const icons=['ฅ^•ﻌ•^ฅ','(≧◡≦)','(－_－)','(－.－) zZ','(－ω－)','(｡•́︿•̀｡)','(╥﹏╥)','(｡•́︿•̀｡)','(×_×)','( `ω´ )','(⊙_⊙)','(♡ω♡)','(－ω－)','(つω⊂)'];const labels={food:'🍙 Еда',mood:'💗 Настроение',fun:'🎮 Веселье',health:'✚ Здоровье'};let last=null,busy=false;const $=id=>document.getElementById(id);$('emotions').innerHTML=faces.map((f,i)=>`<button class="secondary" id="emo${i}" onclick="send('debug','face',${i})">${icons[i]}<br>${f}</button>`).join('');
+const debugKeys=[['food','Еда',100],['mood','Настроение',100],['fun','Веселье',100],['health','Здоровье',100],['sleepiness','Сонливость',100],['bond','Дружба',100],['xp','Опыт XP',1000000],['item0','Печенье',99],['item1','Клубок',99],['item2','Бантик',99],['item3','Звёздочка',99]];
+$('debugFields').innerHTML=debugKeys.map(([key,label,max])=>`<label>${label}<input type="number" id="set_${key}" min="0" max="${max}" inputmode="numeric" placeholder="0–${max}"><button class="secondary" onclick="setDebug('${key}')">Применить</button></label>`).join('');
+async function setDebug(key){if(busy)return;const el=$('set_'+key),value=el.value;if(!/^\d+$/.test(value)){toast('Введи целое число');return;}busy=true;try{const r=await fetch('/debug?do=set&key='+encodeURIComponent(key)+'&value='+encodeURIComponent(value),{method:'POST'});if(!r.ok)throw Error(await r.text());toast('✓ Значение сохранено');await refresh();}catch(e){toast('Ошибка: '+e.message)}finally{busy=false}}
 function toast(t){$('toast').textContent=t;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2800)}
 async function refresh(){try{const r=await fetch('/status',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const s=await r.json();last=s;$('conn').textContent='● На связи';$('conn').style.color='#8de7bd';$('face').textContent=s.quizActive?'???':s.face;const portrait=$('fenikPortrait');const faceId=s.quizActive?0:(Number(s.faceId)||0);if(portrait.dataset.face!==String(faceId)){portrait.src='/portrait?face='+faceId;portrait.dataset.face=String(faceId)}$('state').textContent=s.quizActive?'🎭 Угадай эмоцию':(s.resting?'💤 Феник спит':s.blink?'◡ Моргает':s.emotion);$('level').textContent=`LV ${s.level} · XP ${s.xp}`;$('personality').textContent=s.personality;$('memory').textContent=s.memory;
 $('daycycle').textContent=s.dayPart+' · '+String(s.hour).padStart(2,'0')+':'+String(s.minute).padStart(2,'0');
@@ -396,6 +406,9 @@ $('screenInterval').textContent=s.refreshInterval;$('screenStats').textContent='
 $('nightToggle').textContent=s.nightModeEnabled?'🌙 Выключить автосон':'🌙 Включить автосон';
 $('clockInfo').textContent=s.realTime?'✓ Реальное время синхронизировано':'⚠ Время ещё не синхронизировано';
 $('inventory').textContent=s.inventory;
+const itemNames=['🍪 Печенье','🧶 Клубок','🎀 Бантик','⭐ Звёздочка'];
+$('inventoryItems').innerHTML=(s.items||[]).map((count,i)=>count>0?`<button class="inventoryItem" onclick="send('gift','give',${i})"><span>${itemNames[i]}</span><small>В наличии: ${count}</small></button>`:'').join('');
+$('inventoryEmpty').hidden=(s.items||[]).some(n=>n>0);
 $('gameStats').textContent=`Раундов: ${s.gameRound} · Побед: ${s.gamesWon} · Поражений: ${s.gamesLost} · Рекорд реакции: ${s.bestReactionMs||'—'} мс`;
 $('giftStats').textContent='Подарено: '+s.given+' · Быстрых побед: '+s.quickWins+' · Угадано: '+s.guessWins;
 $('habits').textContent=`Кормлений: ${s.feedCount} · Игр: ${s.playCount} · Поглаживаний: ${s.petCount} · Заботы: ${s.careCount}`;
@@ -544,7 +557,7 @@ void debugAction(){
  if(cmd=="face"){
   if(!server.hasArg("id")){server.send(400,"text/plain","Missing id");return;}
   int id=server.arg("id").toInt();
-  if(id<0||id>11){server.send(400,"text/plain","Invalid face id");return;}
+  if(id<0||id>13){server.send(400,"text/plain","Invalid face id");return;}
   debugFace=id;debugUntil=millis()+20000UL;
  }else if(cmd=="auto"){debugFace=-1;actionFace=255;blink=false;}
  else if(cmd=="blink"){debugFace=2;debugUntil=millis()+4500UL;blink=false;lastBlink=millis();}
@@ -552,6 +565,24 @@ void debugAction(){
   if(isResting()){health=clampStat(health+1);food=clampStat(food-1);}
   else{food=clampStat(food-1);fun=clampStat(fun-1);if(food<30||fun<30)mood=clampStat(mood-1);}
   if(food<15)health=clampStat(health-1);
+  saveState();
+ }else if(cmd=="set"){
+  String key=server.arg("key"),value=server.arg("value");
+  if(value.length()==0||value.length()>8){server.send(400,"text/plain","Invalid value");return;}
+  for(unsigned int i=0;i<value.length();i++)if(value[i]<'0'||value[i]>'9'){server.send(400,"text/plain","Numbers only");return;}
+  unsigned long n=strtoul(value.c_str(),nullptr,10);
+  if(key=="food"&&n<=100)food=n;
+  else if(key=="mood"&&n<=100)mood=n;
+  else if(key=="fun"&&n<=100)fun=n;
+  else if(key=="health"&&n<=100)health=n;
+  else if(key=="sleepiness"&&n<=100)sleepiness=n;
+  else if(key=="bond"&&n<=100)bond=n;
+  else if(key=="xp"&&n<=1000000UL)xp=n;
+  else if(key=="item0"&&n<=99)inventory[0]=n;
+  else if(key=="item1"&&n<=99)inventory[1]=n;
+  else if(key=="item2"&&n<=99)inventory[2]=n;
+  else if(key=="item3"&&n<=99)inventory[3]=n;
+  else {server.send(400,"text/plain","Unknown key or out of range");return;}
   saveState();
  }else if(cmd=="boost"){food=mood=fun=health=100;saveState();}
  else if(cmd=="reset"){food=75;mood=65;fun=45;health=85;xp=32;bond=20;gifts=eventsSeen=gamesWon=0;gamesLost=bestReactionMs=quickWins=guessWins=given=0;gameRound=0;actionsCount=0;feedCount=playCount=petCount=careCount=totalMinutes=0;currentEvent=0;gameTarget=-1;sleeping=false;debugFace=-1;actionFace=255;say("Начнём сначала! ♡");saveState();}
@@ -709,6 +740,8 @@ void setup(){
   const uint8_t* data=emotionPng1;
   size_t length=emotionPng1Len;
   switch(face){
+    case 12: data=fenikDrowsyPng;length=fenikDrowsyPngLen;break;
+    case 13: data=fenikRubEyesPng;length=fenikRubEyesPngLen;break;
     case 5: case 6: case 7: case 8: data=emotionPng5;length=emotionPng5Len;break;
     case 9: data=emotionPng9;length=emotionPng9Len;break;
     case 10: data=emotionPng10;length=emotionPng10Len;break;
