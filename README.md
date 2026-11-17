@@ -1,17 +1,12 @@
-# Abrams Pet v1.0 (experimental)
+# Abrams Pet v1.2 — side panel prototype
 
-ESP32-S3 DevKitC-1 + Waveshare 2.13 V4 e-ink, 250×122.
+ESP32-S3 / Waveshare 2.13 V4 (250x122), GPIO mapping unchanged from uploaded v1.1.
 
-Pin assumptions (verify against the real device): MOSI 11, SCK 12, CS 10, DC 9, RST 8, BUSY 7.
+## Screen
+160x122 monochrome portrait on left, 90px status column on right. Portraits are center-cropped from previously approved preview sprites without further stretching. Panel labels use built-in ASCII font to avoid missing Cyrillic glyphs. UP is uptime, not wall-clock time. ENERGY and FOOD are simple simulated counters, not measured sensors. WiFi AP means the firmware runs a local access point, not internet status. No battery percent is shown.
 
-This prototype is based on the sketch that compiled in Wokwi. A successful cloud build does not verify the actual display, wiring, or Wi-Fi behavior.
+## OTA / safety
+Existing `/update` and Wi-Fi AP routes are preserved in source. This project has not been compiled or tested on hardware. Check the OTA partition layout of the installed firmware before updating. Keep v1.1 backup. Upload only `.pio/build/esp32s3/firmware.bin` to OTA; **never** upload merged `Abrams-Pet-full.bin` via OTA.
 
-## Build without local software
-
-GitHub → Actions → Build Abrams Pet firmware → Run workflow → download artifact `Abrams-Pet-ESP32S3`.
-
-For a full flash install with Espressif esptool-js, select `Abrams-Pet-full.bin` at address **0x0**. **Do not use the application-only firmware.bin at 0x0.**
-
-Warning: full flash install overwrites the prior Fenik Pet bootloader/partition table/application; save a backup if you want to restore it. Flash only after verifying the target board and pinout.
-
-The original Wokwi sketch does not include OTA and uses a basic face drawing. Wi-Fi AP is `Abrams-Pet`, password `AbramsPet2026` (as hardcoded in sketch).
+## GitHub Actions from iPhone
+Upload repository files, including hidden `.github/workflows/build.yml`, to GitHub; run `Build Abrams Pet firmware` from Actions; download artifact, extract `firmware.bin`. Flash through Safari while connected to ESP32 access point, after verifying compatibility.
