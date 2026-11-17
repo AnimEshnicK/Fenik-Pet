@@ -13,3 +13,9 @@ Mobile navigation: Главная, Status, Игры, Debug, Настройки. 
 The main page now displays Fenik's original embedded monochrome portrait instead of the text face. The portrait is served from flash at `/portrait?face=N` (no SPIFFS upload needed), and updates with `/status` every 2 seconds. Existing five embedded web PNG variants are reused for the 12 expressions (other expressions use nearest available portrait). During quiz, the portrait stays neutral to avoid revealing the answer. OTA and tabs remain unchanged.
 
 **Important:** This firmware has not been compiled or hardware-tested. Verify partition compatibility with the Abrams Pet firmware before OTA.
+
+## v1.4.5
+- Two new full 160×122 monochrome portraits: DROWSY and RUB_EYES, also served to WebUI. Waking transition: 20 seconds eye-rubbing, 70 seconds drowsy, then normal emotion. Existing sleep rules remain.
+- Dedicated Inventory tab. Zero-stock items are not rendered. Inventory counts are returned in JSON as `items`.
+- Debug numeric editor for food, mood, fun, health, sleepiness, bond, XP, and all four item quantities; validated server-side and saved to NVS.
+- Existing OTA endpoint and GitHub Actions retained. **Not compiled or tested on hardware. Verify partition compatibility before OTA.**
